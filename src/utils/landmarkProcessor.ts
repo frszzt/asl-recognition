@@ -4,6 +4,25 @@ import type { Landmark } from '../components/HandTracker'
 export type { Landmark }
 
 /**
+ * Depth features extracted from MediaPipe z-coordinates
+ * MediaPipe provides pseudo-depth data that works with standard webcams
+ */
+export interface DepthFeatures {
+  /** Average z-distance of hand from camera (normalized) */
+  handDepth: number
+  /** Per-finger depths (thumb, index, middle, ring, pinky) */
+  fingerDepths: number[]
+  /** Variance of depth across hand (indicates tilt) */
+  depthVariance: number
+  /** Depth differences between adjacent fingers */
+  relativeFingerDepths: number[]
+  /** Depth range (max - min) across hand */
+  depthRange: number
+  /** Is hand tilted forward/backward based on depth distribution */
+  handTilt: 'forward' | 'backward' | 'flat'
+}
+
+/**
  * Hand landmark indices from MediaPipe Hands
  */
 export const HAND_LANDMARKS = {
@@ -191,6 +210,135 @@ export function extractFeatures(landmarks: Landmark[]): number[] {
     ...distances.slice(0, 50), // Limit distances to reduce dimensionality
     ...angles,
     ...Object.values(fingers).map(v => v ? 1 : 0)
+  ]
+}
+
+/**
+ * Extract depth features from MediaPipe z-coordinates
+ * This works with standard webcams - MediaPipe provides pseudo-depth
+ */
+export function extractDepthFeatures(landmarks: Landmark[]): DepthFeatures {
+  if (landmarks.length === 0) {
+    return {
+      handDepth: 0,
+      fingerDepths: [0, 0, 0, 0, 0],
+      depthVariance: 0,
+      relativeFingerDepths: [0, 0, 0, 0],
+      depthRange: 0,
+      handTilt: 'flat'
+    }
+  }
+
+  // Finger tip indices
+  const THUMB_TIP = 4
+  const INDEX_TIP = 8
+  const MIDDLE_TIP = 12
+  const RING_TIP = 16
+  const PINKY_TIP = 20
+
+  // Get depths of finger tips
+  const fingerTips = [
+    landmarks[THUMB_TIP],
+    landmarks[INDEX_TIP],
+    landmarks[MIDDLE_TIP],
+    landmarks[RING_TIP],
+    landmarks[PINKY_TIP]
+  ]
+
+  const fingerDepths = fingerTips.map(lm => lm.z || 0)
+
+  // Calculate average hand depth
+  const allDepths = landmarks.map(lm => lm.z || 0)
+  const handDepth = allDepths.reduce((sum, d) => sum + d, 0) / allDepths.length
+
+  // Calculate depth variance (spread of depths)
+  const depthVariance = allDepths.reduce((sum, d) => sum + Math.pow(d - handDepth, 2), 0) / allDepths.length
+
+  // Calculate relative depths between adjacent fingers
+  const relativeFingerDepths = [
+    fingerDepths[1] - fingerDepths[0], // index - thumb
+    fingerDepths[2] - fingerDepths[1], // middle - index
+    fingerDepths[3] - fingerDepths[2], // ring - middle
+    fingerDepths[4] - fingerDepths[3]  // pinky - ring
+  ]
+
+  // Calculate depth range
+  const depthMin = Math.min(...allDepths)
+  const depthMax = Math.max(...allDepths)
+  const depthRange = depthMax - depthMin
+
+  // Determine hand tilt based on depth distribution
+  // If fingertips are deeper (more positive) than wrist, hand is tilted forward
+  const wristDepth = landmarks[0].z || 0
+  const avgFingerTipDepth = fingerDepths.reduce((sum, d) => sum + d, 0) / fingerDepths.length
+  let handTilt: 'forward' | 'backward' | 'flat' = 'flat'
+
+  const depthDifference = avgFingerTipDepth - wristDepth
+  if (depthDifference > 0.02) {
+    handTilt = 'forward' // Fingertips further away
+  } else if (depthDifference < -0.02) {
+    handTilt = 'backward' // Fingertips closer
+  }
+
+  return {
+    handDepth,
+    fingerDepths,
+    depthVariance,
+    relativeFingerDepths,
+    depthRange,
+    handTilt
+  }
+}
+
+/**
+ * Compare depth features between two sets of landmarks
+ * Returns similarity score (0-1, higher is more similar)
+ */
+export function compareDepthFeatures(features1: DepthFeatures, features2: DepthFeatures): number {
+  const weights = {
+    handDepth: 0.2,
+    fingerDepths: 0.4,
+    relativeFingerDepths: 0.3,
+    depthRange: 0.1
+  }
+
+  let score = 0
+
+  // Compare average hand depth (normalized)
+  const depthDiff = Math.abs(features1.handDepth - features2.handDepth)
+  score += weights.handDepth * Math.max(0, 1 - depthDiff * 10)
+
+  // Compare finger depths
+  const fingerDepthDiff = features1.fingerDepths.reduce((sum, d, i) =>
+    sum + Math.abs(d - features2.fingerDepths[i]), 0) / 5
+  score += weights.fingerDepths * Math.max(0, 1 - fingerDepthDiff * 10)
+
+  // Compare relative finger depths (more important for distinguishing signs)
+  const relativeDiff = features1.relativeFingerDepths.reduce((sum, d, i) =>
+    sum + Math.abs(d - features2.relativeFingerDepths[i]), 0) / 4
+  score += weights.relativeFingerDepths * Math.max(0, 1 - relativeDiff * 5)
+
+  // Compare depth range
+  const rangeDiff = Math.abs(features1.depthRange - features2.depthRange)
+  score += weights.depthRange * Math.max(0, 1 - rangeDiff * 5)
+
+  return Math.min(1, score)
+}
+
+/**
+ * Enhanced feature extraction that includes depth information
+ */
+export function extractFeaturesWithDepth(landmarks: Landmark[]): number[] {
+  const baseFeatures = extractFeatures(landmarks)
+  const depthFeatures = extractDepthFeatures(landmarks)
+
+  return [
+    ...baseFeatures,
+    depthFeatures.handDepth,
+    ...depthFeatures.fingerDepths,
+    depthFeatures.depthVariance,
+    ...depthFeatures.relativeFingerDepths,
+    depthFeatures.depthRange
   ]
 }
 

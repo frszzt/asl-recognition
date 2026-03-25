@@ -102,6 +102,24 @@ node scripts/importDataset.js --source=custom --path=./my_asl_data
 node scripts/importDataset.js --source=landmarks --path=./landmarks.json
 ```
 
+### Import WLASL Dataset
+
+The WLASL dataset provides video-based ASL samples for improved recognition.
+
+```bash
+# Step 1: Download metadata
+node scripts/importWlaslDataset.js --download-metadata
+
+# Step 2: Extract landmarks from videos (requires Python with MediaPipe)
+python scripts/data/wlasl/extract_wlasl.py ./data/wlasl/videos ./data/wlasl/WLASL_v0.3.json ./src/data/trainingData.json
+
+# Step 3: Process pre-extracted landmarks
+node scripts/importWlaslDataset.js --from-processed=./landmarks.json
+
+# Step 4: Generate templates (auto-run after extraction)
+# Templates saved to: src/data/wlaslTemplates.json
+```
+
 ### Merge Multiple Datasets
 
 ```bash
@@ -118,7 +136,21 @@ node scripts/importDataset.js --merge --input=data1.json,data2.json --output=mer
 - **Source:** https://www.kaggle.com/datasets/grassknoted/asl-alphabet
 - **Size:** ~87,000 images
 - **Categories:** A-Z, delete, space, nothing
-- **Recommended:** Yes
+- **Recommended:** Yes (for static signs)
+
+### WLASL (Word-Level ASL) - Recommended for Video
+- **Source:** https://github.com/dxli94/WLASL
+- **Paper:** https://arxiv.org/abs/1910.11019
+- **Size:** 21,000+ videos, 2,000+ signs
+- **Format:** RGB video
+- **Recommended:** Yes (best for comprehensive coverage)
+- **Import:** `node scripts/importWlaslDataset.js --download-metadata`
+
+### MS-ASL (Microsoft)
+- **Source:** https://www.microsoft.com/en-us/research/publication/ms-asl-a-large-scale-data-set-and-approach-for-american-sign-language-video-recognition/
+- **Size:** 87,000+ videos, 207 signs
+- **Format:** RGB video
+- **Quality:** High quality, diverse signers
 
 ### RWTH-BOSTON-104
 - **Source:** https://www-i6.informatik.rwth-aachen.de/~koller/RWTH-BOSTON-104/
