@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import HandTracker, { DetectedHand } from '../components/HandTracker'
-import HandGesture from '../components/HandGesture'
+import ASLHandImage, { ASLImageGrid } from '../components/ASLHandImage'
 import { classifyASL, getFeedbackMessage, ClassificationSmoother } from '../utils/aslClassifier'
 import { getAllSigns, getSignInfo } from '../data/aslData'
 
@@ -334,38 +334,29 @@ const PracticeMode = ({ onNavigate }: PracticeModeProps) => {
               {mode === 'target' && signInfo && (
                 <div className="bg-gradient-to-br from-white/5 to-white/10 rounded-xl p-4 mb-4">
                   <h3 className="text-2xl font-bold text-white mb-2 text-center">{targetSign}</h3>
-                  <p className="text-blue-300 font-medium mb-2 text-center">{signInfo.description}</p>
-                  {/* Reference Hand */}
+                  <p className="text-blue-300 font-medium mb-3 text-center text-base leading-relaxed">{signInfo.description}</p>
+                  {/* Reference Hand Image */}
                   <div className="flex justify-center my-4">
-                    <HandGesture
+                    <ASLHandImage
                       sign={targetSign}
                       size={140}
-                      animated={true}
-                      showMotion={true}
+                      showLabel={false}
                     />
                   </div>
-                  <p className="text-white/60 text-sm text-center">{signInfo.tips}</p>
+                  <p className="text-white/80 text-sm text-center font-medium leading-relaxed">{signInfo.tips}</p>
                 </div>
               )}
 
-              <div className="grid grid-cols-4 gap-2">
-                {allSigns.map(sign => {
-                  const info = getSignInfo(sign)
-                  return (
-                    <button
-                      key={sign}
-                      onClick={() => {
-                        setMode('target')
-                        setTargetSign(sign)
-                        smootherRef.current.reset()
-                      }}
-                      className="bg-white/5 hover:bg-white/10 rounded-lg p-2 text-center transition-colors"
-                      title={info?.description}
-                    >
-                      <div className="text-xl font-bold text-white">{sign}</div>
-                    </button>
-                  )
-                })}
+              <div className="max-h-64 overflow-y-auto pr-2">
+                <ASLImageGrid
+                  signs={allSigns}
+                  onSelectSign={(sign) => {
+                    setMode('target')
+                    setTargetSign(sign)
+                    smootherRef.current.reset()
+                  }}
+                  className="grid-cols-4 sm:grid-cols-5"
+                />
               </div>
             </div>
 

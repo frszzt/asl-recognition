@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import HandTracker, { DetectedHand } from '../components/HandTracker'
-import HandGesture from '../components/HandGesture'
+import ASLHandImage, { ASLImageGrid } from '../components/ASLHandImage'
 import { classifyASL, getFeedbackMessage, ClassificationSmoother } from '../utils/aslClassifier'
 import { ASL_ALPHABET, ASL_NUMBERS, ASL_SENTENCES, getSignInfo } from '../data/aslData'
 
@@ -279,28 +279,14 @@ const LearnMode = ({ onNavigate }: LearnModeProps) => {
           {/* Right Panel - Sign List */}
           <div className="lg:col-span-1">
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
-              <h2 className="text-lg font-semibold text-white/70 mb-4">All Signs</h2>
-              <div className="grid grid-cols-5 gap-2 max-h-96 overflow-y-auto">
-                {signs.map((sign, index) => {
-                  const isCompleted = completedSigns.has(sign)
-                  const isCurrent = index === currentSignIndex
-
-                  return (
-                    <button
-                      key={sign}
-                      onClick={() => selectSign(index)}
-                      className={`aspect-square rounded-lg font-bold text-lg transition-all ${
-                        isCurrent
-                          ? 'bg-green-500 text-white scale-110 shadow-lg'
-                          : isCompleted
-                          ? 'bg-green-500/30 text-green-300 hover:bg-green-500/40'
-                          : 'bg-white/10 text-white/70 hover:bg-white/20'
-                      }`}
-                    >
-                      {isCompleted && !isCurrent ? '✓' : sign}
-                    </button>
-                  )
-                })}
+              <h2 className="text-lg font-semibold text-white/70 mb-4 text-center">All Signs</h2>
+              <div className="max-h-96 overflow-y-auto pr-2">
+                <ASLImageGrid
+                  signs={signs}
+                  completedSigns={completedSigns}
+                  currentSign={signs[currentSignIndex]}
+                  onSelectSign={(sign) => selectSign(signs.indexOf(sign))}
+                />
               </div>
 
               {/* Stats */}
@@ -314,16 +300,15 @@ const LearnMode = ({ onNavigate }: LearnModeProps) => {
 
             {/* Reference Hand */}
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mt-4">
-              <h2 className="text-lg font-semibold text-white/70 mb-4">Reference</h2>
+              <h2 className="text-lg font-semibold text-white/70 mb-4 text-center">Reference</h2>
               <div className="bg-gradient-to-br from-white/5 to-white/10 rounded-xl p-4 flex justify-center">
-                <HandGesture
+                <ASLHandImage
                   sign={currentSign}
                   size={160}
-                  animated={true}
-                  showMotion={true}
+                  showLabel={false}
                 />
               </div>
-              <p className="text-white/60 text-sm mt-3 text-center">
+              <p className="text-white/80 text-base mt-3 text-center font-medium leading-relaxed">
                 {signInfo?.tips || 'Position your hand clearly in front of the camera.'}
               </p>
             </div>

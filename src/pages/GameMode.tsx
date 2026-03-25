@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import HandTracker, { DetectedHand } from '../components/HandTracker'
-import HandGesture from '../components/HandGesture'
+import ASLHandImage from '../components/ASLHandImage'
 import { classifyASL, calculateRoundScore, ClassificationSmoother } from '../utils/aslClassifier'
 import { getSignSequence, ACHIEVEMENTS, ASL_ALPHABET, ASL_NUMBERS } from '../data/aslData'
 
@@ -406,16 +406,15 @@ const GameMode = ({ onNavigate }: GameModeProps) => {
             <div className="lg:col-span-1">
               {/* Target Sign */}
               <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl p-6 text-center mb-4 shadow-lg">
-                <div className="text-white/80 text-sm mb-2">Make this sign:</div>
+                <div className="text-white/90 text-base font-medium mb-3 tracking-wide">Make this sign:</div>
                 <div className="text-7xl font-bold text-white animate-pulse mb-3">{currentSign}</div>
-                {/* Reference Hand Gesture */}
+                {/* Reference Hand Image */}
                 {currentSign && (
                   <div className="flex justify-center">
-                    <HandGesture
+                    <ASLHandImage
                       sign={currentSign}
                       size={120}
-                      animated={true}
-                      showMotion={true}
+                      showLabel={false}
                     />
                   </div>
                 )}
