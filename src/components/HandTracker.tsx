@@ -208,8 +208,9 @@ const HandTracker = ({
               radius: 4
             })
 
-            // Get handedness
-            const handedness = results.multiHandedness?.[index]?.label || 'Right'
+            // Get handedness (swapped because camera is mirrored)
+            const detectedHandedness = results.multiHandedness?.[index]?.label || 'Right'
+            const handedness = detectedHandedness === 'Left' ? 'Right' : 'Left'
 
             // Create detected hand object
             const hand: DetectedHand = {

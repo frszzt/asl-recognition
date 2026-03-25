@@ -231,13 +231,13 @@ const LearnMode = ({ onNavigate }: LearnModeProps) => {
               <div className="aspect-square bg-gray-900 rounded-xl overflow-hidden relative">
                 <video
                   ref={videoRef}
-                  className="absolute inset-0 w-full h-full object-cover"
+                  className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
                   playsInline
                   muted
                 />
                 <canvas
                   ref={canvasRef}
-                  className="absolute inset-0 w-full h-full"
+                  className="absolute inset-0 w-full h-full scale-x-[-1]"
                   width={480}
                   height={480}
                 />
