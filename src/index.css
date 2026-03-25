@@ -52,3 +52,38 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-primary-500;
 }
+
+/* Hand Gesture Animations */
+.finger-segment {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: bottom center;
+}
+
+.thumb-segment {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: right center;
+}
+
+/* Motion-based sign animations */
+@keyframes motionJ {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-10px, 10px); }
+  50% { transform: translate(-15px, 0); }
+  75% { transform: translate(-10px, -10px); }
+}
+
+@keyframes motionZ {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(15px, 0); }
+  40% { transform: translate(15px, 15px); }
+  60% { transform: translate(0, 15px); }
+  80% { transform: translate(0, 0); }
+}
+
+.hand-gesture-motion {
+  animation: motionJ 2s ease-in-out infinite;
+}
+
+.hand-gesture-motion-z {
+  animation: motionZ 2s ease-in-out infinite;
+}

@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import HandTracker, { DetectedHand } from '../components/HandTracker'
+import HandGesture from '../components/HandGesture'
 import { classifyASL, getFeedbackMessage, ClassificationSmoother } from '../utils/aslClassifier'
 import { ASL_ALPHABET, ASL_NUMBERS, ASL_SENTENCES, getSignInfo } from '../data/aslData'
 
@@ -18,10 +19,12 @@ const LearnMode = ({ onNavigate }: LearnModeProps) => {
   const [feedback, setFeedback] = useState<string>('Position your hand in the frame')
   const [isCorrect, setIsCorrect] = useState(false)
   const [completedSigns, setCompletedSigns] = useState<Set<string>>(new Set())
+  const [refsReady, setRefsReady] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const smootherRef = useRef(new ClassificationSmoother(5))
+  const onHandsDetectedRef = useRef<(hands: DetectedHand[]) => void>()
 
   // Update signs when category changes
   useEffect(() => {
@@ -42,11 +45,15 @@ const LearnMode = ({ onNavigate }: LearnModeProps) => {
     smootherRef.current.reset()
   }, [category])
 
-  const currentSign = signs[currentSignIndex]
-  const signInfo = getSignInfo(currentSign)
-  const progress = ((currentSignIndex + 1) / signs.length) * 100
+  // Wait for refs to be ready (fixes blank page bug)
+  useEffect(() => {
+    if (videoRef.current && canvasRef.current) {
+      setRefsReady(true)
+    }
+  }, [])
 
-  const handleHandsDetected = (hands: DetectedHand[]) => {
+  // Keep callback updated and avoid stale closures
+  const handleHandsDetected = useCallback((hands: DetectedHand[]) => {
     if (hands.length === 0) {
       setDetectedSign('')
       setConfidence(0)
@@ -56,23 +63,41 @@ const LearnMode = ({ onNavigate }: LearnModeProps) => {
     }
 
     const hand = hands[0]
-    const result = smootherRef.current.add(classifyASL(hand.landmarks, currentSign))
+    const sign = signs[currentSignIndex] // Get current sign from index
+    const result = smootherRef.current.add(classifyASL(hand.landmarks, sign))
 
     setDetectedSign(result.sign)
     setConfidence(result.confidence)
 
-    if (result.sign === currentSign && result.confidence > 0.65) {
+    if (result.sign === sign && result.confidence > 0.65) {
       setIsCorrect(true)
-      setFeedback(getFeedbackMessage(result, currentSign))
-      setCompletedSigns(prev => new Set([...prev, currentSign]))
+      setFeedback(getFeedbackMessage(result, sign))
+      setCompletedSigns(prev => new Set([...prev, sign]))
     } else if (result.confidence > 0.5) {
       setIsCorrect(false)
-      setFeedback(getFeedbackMessage(result, currentSign))
+      setFeedback(getFeedbackMessage(result, sign))
     } else {
       setIsCorrect(false)
       setFeedback('Adjust your hand position')
     }
-  }
+  }, [currentSignIndex, signs])
+
+  // Derive current sign and info from index
+  const currentSign = signs[currentSignIndex]
+  const signInfo = getSignInfo(currentSign)
+  const progress = ((currentSignIndex + 1) / signs.length) * 100
+
+  // Update ref when callback changes
+  useEffect(() => {
+    onHandsDetectedRef.current = handleHandsDetected
+  }, [handleHandsDetected])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      smootherRef.current.reset()
+    }
+  }, [])
 
   const goToNext = () => {
     if (currentSignIndex < signs.length - 1) {
@@ -208,6 +233,7 @@ const LearnMode = ({ onNavigate }: LearnModeProps) => {
                   ref={videoRef}
                   className="absolute inset-0 w-full h-full object-cover"
                   playsInline
+                  muted
                 />
                 <canvas
                   ref={canvasRef}
@@ -215,12 +241,16 @@ const LearnMode = ({ onNavigate }: LearnModeProps) => {
                   width={480}
                   height={480}
                 />
-                <HandTracker
-                  videoElement={videoRef.current}
-                  canvasElement={canvasRef.current}
-                  onHandsDetected={handleHandsDetected}
-                  enabled={true}
-                />
+                {/* Only render HandTracker when refs are ready (fixes blank page bug) */}
+                {refsReady && (
+                  <HandTracker
+                    videoElement={videoRef.current}
+                    canvasElement={canvasRef.current}
+                    onHandsDetected={(hands) => onHandsDetectedRef.current?.(hands)}
+                    enabled={true}
+                    targetFPS={20}
+                  />
+                )}
               </div>
 
               {/* Detection Result */}
@@ -285,13 +315,17 @@ const LearnMode = ({ onNavigate }: LearnModeProps) => {
             {/* Reference Hand */}
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 mt-4">
               <h2 className="text-lg font-semibold text-white/70 mb-4">Reference</h2>
-              <div className="bg-gradient-to-br from-white/5 to-white/10 rounded-xl p-6 text-center">
-                <div className="text-6xl mb-3">👋</div>
-                <p className="text-white/60 text-sm">
-                  Position your hand clearly in front of the camera.
-                  Keep good lighting for best results.
-                </p>
+              <div className="bg-gradient-to-br from-white/5 to-white/10 rounded-xl p-4 flex justify-center">
+                <HandGesture
+                  sign={currentSign}
+                  size={160}
+                  animated={true}
+                  showMotion={true}
+                />
               </div>
+              <p className="text-white/60 text-sm mt-3 text-center">
+                {signInfo?.tips || 'Position your hand clearly in front of the camera.'}
+              </p>
             </div>
           </div>
         </div>

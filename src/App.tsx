@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import Home from './pages/Home'
 import LearnMode from './pages/LearnMode'
 import PracticeMode from './pages/PracticeMode'
@@ -24,10 +25,18 @@ function App() {
     }
   }
 
+  const handleError = (error: Error, errorInfo: any) => {
+    console.error('App error:', error)
+    console.error('Error info:', errorInfo)
+    // Could send to error tracking service here
+  }
+
   return (
-    <div className="min-h-screen">
-      {renderPage()}
-    </div>
+    <ErrorBoundary onError={handleError}>
+      <div className="min-h-screen">
+        {renderPage()}
+      </div>
+    </ErrorBoundary>
   )
 }
 

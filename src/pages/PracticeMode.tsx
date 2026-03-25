@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import HandTracker, { DetectedHand } from '../components/HandTracker'
+import HandGesture from '../components/HandGesture'
 import { classifyASL, getFeedbackMessage, ClassificationSmoother } from '../utils/aslClassifier'
 import { getAllSigns, getSignInfo } from '../data/aslData'
 
@@ -22,20 +23,30 @@ const PracticeMode = ({ onNavigate }: PracticeModeProps) => {
     bestStreak: 0,
     currentStreak: 0
   })
+  const [refsReady, setRefsReady] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const smootherRef = useRef(new ClassificationSmoother(5))
   const lastRecognitionRef = useRef<number>(0)
+  const onHandsDetectedRef = useRef<(hands: DetectedHand[]) => void>()
 
   const allSigns = getAllSigns()
   const signInfo = getSignInfo(targetSign)
+
+  // Wait for refs to be ready (fixes blank page bug)
+  useEffect(() => {
+    if (videoRef.current && canvasRef.current) {
+      setRefsReady(true)
+    }
+  }, [])
 
   useEffect(() => {
     setFeedback(`Practice the sign for "${targetSign}"`)
   }, [targetSign])
 
-  const handleHandsDetected = (hands: DetectedHand[]) => {
+  // Keep callback updated and avoid stale closures
+  const handleHandsDetected = useCallback((hands: DetectedHand[]) => {
     if (hands.length === 0) {
       setDetectedSign('')
       setConfidence(0)
@@ -61,7 +72,19 @@ const PracticeMode = ({ onNavigate }: PracticeModeProps) => {
       const info = getSignInfo(result.sign)
       setFeedback(result.sign ? `${result.sign}: ${info?.description || ''}` : 'No sign detected')
     }
-  }
+  }, [mode, targetSign])
+
+  // Update ref when callback changes
+  useEffect(() => {
+    onHandsDetectedRef.current = handleHandsDetected
+  }, [handleHandsDetected])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      smootherRef.current.reset()
+    }
+  }, [])
 
   const recordAttempt = (wasCorrect: boolean) => {
     setStats(prev => {
@@ -254,12 +277,16 @@ const PracticeMode = ({ onNavigate }: PracticeModeProps) => {
                   width={480}
                   height={480}
                 />
-                <HandTracker
-                  videoElement={videoRef.current}
-                  canvasElement={canvasRef.current}
-                  onHandsDetected={handleHandsDetected}
-                  enabled={true}
-                />
+                {/* Only render HandTracker when refs are ready (fixes blank page bug) */}
+                {refsReady && (
+                  <HandTracker
+                    videoElement={videoRef.current}
+                    canvasElement={canvasRef.current}
+                    onHandsDetected={(hands) => onHandsDetectedRef.current?.(hands)}
+                    enabled={true}
+                    targetFPS={20}
+                  />
+                )}
               </div>
 
               {/* Detection Result */}
@@ -306,9 +333,18 @@ const PracticeMode = ({ onNavigate }: PracticeModeProps) => {
 
               {mode === 'target' && signInfo && (
                 <div className="bg-gradient-to-br from-white/5 to-white/10 rounded-xl p-4 mb-4">
-                  <h3 className="text-2xl font-bold text-white mb-2">{targetSign}</h3>
-                  <p className="text-blue-300 font-medium mb-2">{signInfo.description}</p>
-                  <p className="text-white/60 text-sm">{signInfo.tips}</p>
+                  <h3 className="text-2xl font-bold text-white mb-2 text-center">{targetSign}</h3>
+                  <p className="text-blue-300 font-medium mb-2 text-center">{signInfo.description}</p>
+                  {/* Reference Hand */}
+                  <div className="flex justify-center my-4">
+                    <HandGesture
+                      sign={targetSign}
+                      size={140}
+                      animated={true}
+                      showMotion={true}
+                    />
+                  </div>
+                  <p className="text-white/60 text-sm text-center">{signInfo.tips}</p>
                 </div>
               )}
 

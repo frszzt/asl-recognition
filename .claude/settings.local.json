@@ -4,7 +4,11 @@
       "Bash(cd C:\\\\Users\\\\frszz\\\\Faris ASL Project:*)",
       "Bash(tail:*)",
       "Bash(curl:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(cd \"C:/Users/frszz/Faris ASL Project\" && vercel list 2>&1)",
+      "WebSearch",
+      "Bash(grep error TS:*)",
+      "Bash(cd \"C:\\\\Users\\\\frszz\\\\Faris ASL Project\" && npm run build 2>&1)"
     ]
   }
 }

@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import HandTracker, { DetectedHand } from '../components/HandTracker'
+import HandGesture from '../components/HandGesture'
 import { classifyASL, calculateRoundScore, ClassificationSmoother } from '../utils/aslClassifier'
 import { getSignSequence, ACHIEVEMENTS, ASL_ALPHABET, ASL_NUMBERS } from '../data/aslData'
 
@@ -43,12 +44,24 @@ const GameMode = ({ onNavigate }: GameModeProps) => {
   const [feedback, setFeedback] = useState<string>('')
   const [timeRemaining, setTimeRemaining] = useState(60)
   const [showCelebration, setShowCelebration] = useState(false)
+  const [refsReady, setRefsReady] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const smootherRef = useRef(new ClassificationSmoother(5))
   const roundStartTimeRef = useRef<number>(Date.now())
   const hasRecognizedRef = useRef(false)
+  const onHandsDetectedRef = useRef<(hands: DetectedHand[]) => void>()
+
+  // Wait for refs to be ready (fixes blank page bug)
+  useEffect(() => {
+    if (videoRef.current && canvasRef.current) {
+      setRefsReady(true)
+    }
+    return () => {
+      setRefsReady(false)
+    }
+  }, [])
 
   // Initialize game
   const startGame = () => {
@@ -149,7 +162,8 @@ const GameMode = ({ onNavigate }: GameModeProps) => {
     setShowCelebration(true)
   }
 
-  const handleHandsDetected = (hands: DetectedHand[]) => {
+  // Keep callback updated and avoid stale closures
+  const handleHandsDetected = useCallback((hands: DetectedHand[]) => {
     if (!isPlaying || isGameOver || !currentSign) return
 
     if (hands.length === 0) {
@@ -197,7 +211,19 @@ const GameMode = ({ onNavigate }: GameModeProps) => {
     setTimeout(() => {
       hasRecognizedRef.current = false
     }, 1000)
-  }
+  }, [isPlaying, isGameOver, currentSign, gameState.streak])
+
+  // Update ref when callback changes
+  useEffect(() => {
+    onHandsDetectedRef.current = handleHandsDetected
+  }, [handleHandsDetected])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      smootherRef.current.reset()
+    }
+  }, [])
 
   const nextSign = () => {
     if (signsQueue.length <= 1) {
@@ -379,9 +405,20 @@ const GameMode = ({ onNavigate }: GameModeProps) => {
             {/* Center - Game Area */}
             <div className="lg:col-span-1">
               {/* Target Sign */}
-              <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl p-8 text-center mb-4 shadow-lg">
+              <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl p-6 text-center mb-4 shadow-lg">
                 <div className="text-white/80 text-sm mb-2">Make this sign:</div>
-                <div className="text-8xl font-bold text-white animate-pulse">{currentSign}</div>
+                <div className="text-7xl font-bold text-white animate-pulse mb-3">{currentSign}</div>
+                {/* Reference Hand Gesture */}
+                {currentSign && (
+                  <div className="flex justify-center">
+                    <HandGesture
+                      sign={currentSign}
+                      size={120}
+                      animated={true}
+                      showMotion={true}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Camera */}
@@ -398,12 +435,16 @@ const GameMode = ({ onNavigate }: GameModeProps) => {
                     width={480}
                     height={480}
                   />
-                  <HandTracker
-                    videoElement={videoRef.current}
-                    canvasElement={canvasRef.current}
-                    onHandsDetected={handleHandsDetected}
-                    enabled={true}
-                  />
+                  {/* Only render HandTracker when refs are ready (fixes blank page bug) */}
+                  {refsReady && (
+                    <HandTracker
+                      videoElement={videoRef.current}
+                      canvasElement={canvasRef.current}
+                      onHandsDetected={(hands) => onHandsDetectedRef.current?.(hands)}
+                      enabled={true}
+                      targetFPS={20}
+                    />
+                  )}
                 </div>
 
                 {/* Result Display */}
