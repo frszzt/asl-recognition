@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd C:\\\\Users\\\\frszz\\\\Faris ASL Project:*)",
+      "Bash(tail:*)",
+      "Bash(curl:*)",
+      "Bash(cd:*)"
+    ]
+  }
+}
