@@ -2,9 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import { checkCameraPermission, type PermissionStatus } from '../utils/cameraPermissions'
 import {
   checkRealSenseAvailable,
-  createDepthVisualization,
-  type DepthFrame,
-  hasPseudoDepthSupport
+  type DepthFrame
 } from '../utils/realsense-bridge'
 
 interface CameraFeedProps {

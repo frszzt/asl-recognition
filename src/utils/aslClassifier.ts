@@ -7,9 +7,7 @@
 import type { Landmark } from './landmarkProcessor'
 import {
   checkFingersExtended,
-  extractDepthFeatures,
-  compareDepthFeatures,
-  type DepthFeatures
+  extractDepthFeatures
 } from './landmarkProcessor'
 import { ASL_ALPHABET, ASL_NUMBERS } from '../data/aslData'
 
